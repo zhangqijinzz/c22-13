@@ -7,4 +7,6 @@ export interface WorkspacePort {
   updateView(patch: Partial<WorkspaceState>): void;
   navigate(module: ModuleId): void;
   selectRule(ruleId?: string): void;
+  revealRule(ruleId: string): void;
+  completeRuleReveal(ruleId: string, found: boolean): void;
 }

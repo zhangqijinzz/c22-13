@@ -26,10 +26,10 @@ export default function App() {
     return () => workspace.dispose();
   }, [workspace]);
 
+  // 仅发起“定位请求”；真正的滚动与聚焦由规则工作台在模块切换、
+  // 列表渲染完成后执行（见 RulesView 的布局副作用），规则不存在时由工作台提示。
   const openRule = (ruleId: string) => {
-    workspace.navigate('rules');
-    workspace.selectRule(ruleId);
-    document.querySelector(`[data-rule-id="${ruleId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    workspace.revealRule(ruleId);
   };
 
   return (

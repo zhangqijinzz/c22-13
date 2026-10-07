@@ -8,6 +8,10 @@ export class RulesViewModel {
     this.workspace.selectRule(ruleId);
   }
 
+  completeRuleReveal(ruleId: string, found: boolean): void {
+    this.workspace.completeRuleReveal(ruleId, found);
+  }
+
   addRule(): void {
     const project = this.currentProject();
     if (!project) return;

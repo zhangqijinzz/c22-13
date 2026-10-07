@@ -27,6 +27,7 @@ export interface WorkspaceState {
   validationIssues: ReturnType<typeof ruleDomain.validateProject>;
   sampleEvaluation: SampleEvaluation | null;
   selectedRuleId?: string;
+  pendingRuleRevealId?: string;
   notice: string;
   saveError?: string;
 }
@@ -99,7 +100,28 @@ export class RuleWorkspaceViewModel implements WorkspacePort {
   }
 
   navigate(module: ModuleId): void {
-    this.updateView({ activeModule: module, notice: '' });
+    this.updateView({ activeModule: module, notice: '', pendingRuleRevealId: undefined });
+  }
+
+  revealRule(ruleId: string): void {
+    const exists = Boolean(this.state.project?.rules.some((rule) => rule.id === ruleId));
+    if (!exists) {
+      this.updateView({ notice: `规则“${ruleId}”已不存在，可能刚被删除，无法在规则工作台中定位。` });
+      return;
+    }
+    this.updateView({
+      activeModule: 'rules',
+      selectedRuleId: ruleId,
+      pendingRuleRevealId: ruleId,
+      notice: '',
+    });
+  }
+
+  completeRuleReveal(ruleId: string, found: boolean): void {
+    if (this.state.pendingRuleRevealId !== ruleId) return;
+    this.updateView(found
+      ? { pendingRuleRevealId: undefined }
+      : { pendingRuleRevealId: undefined, notice: `规则“${ruleId}”已不存在，可能刚被删除，无法在规则工作台中定位。` });
   }
 
   selectRule(ruleId?: string): void {
@@ -159,7 +181,7 @@ export class RuleWorkspaceViewModel implements WorkspacePort {
     if (!workspace) return;
     const project = createBlankProject(workspace.projects.length + 1);
     const next: WorkspaceDocument = { ...workspace, projects: [...workspace.projects, project], activeProjectId: project.id };
-    this.publish({ ...this.state, workspace: next, project, phase: 'validating', activeModule: 'fields', analysis: null, checkStatus: 'idle', validationIssues: ruleDomain.validateProject(project), sampleEvaluation: evaluateSample(project, project.sampleInputs), selectedRuleId: undefined, notice: '空项目已创建。先定义字段，再添加规则。' });
+    this.publish({ ...this.state, workspace: next, project, phase: 'validating', activeModule: 'fields', analysis: null, checkStatus: 'idle', validationIssues: ruleDomain.validateProject(project), sampleEvaluation: evaluateSample(project, project.sampleInputs), selectedRuleId: undefined, pendingRuleRevealId: undefined, notice: '空项目已创建。先定义字段，再添加规则。' });
     this.scheduleSave(next);
   }
 
@@ -170,7 +192,7 @@ export class RuleWorkspaceViewModel implements WorkspacePort {
     this.cancelCheck();
     const next = { ...workspace, activeProjectId: projectId };
     const issues = ruleDomain.validateProject(project);
-    this.publish({ ...this.state, workspace: next, project, phase: issues.length ? 'validating' : 'editing', activeModule: 'inspection', checkStatus: issues.length ? 'idle' : 'scheduled', analysis: null, validationIssues: issues, sampleEvaluation: evaluateSample(project, project.sampleInputs), selectedRuleId: project.rules[0]?.id, notice: `已切换到“${project.title}”` });
+    this.publish({ ...this.state, workspace: next, project, phase: issues.length ? 'validating' : 'editing', activeModule: 'inspection', checkStatus: issues.length ? 'idle' : 'scheduled', analysis: null, validationIssues: issues, sampleEvaluation: evaluateSample(project, project.sampleInputs), selectedRuleId: project.rules[0]?.id, pendingRuleRevealId: undefined, notice: `已切换到“${project.title}”` });
     this.scheduleSave(next);
     if (!issues.length) this.scheduleCheck(80);
   }
@@ -209,7 +231,7 @@ export class RuleWorkspaceViewModel implements WorkspacePort {
     };
     const next = { ...workspace, projects: [...workspace.projects, project], activeProjectId: project.id };
     const issues = ruleDomain.validateProject(project);
-    this.publish({ ...this.state, workspace: next, project, phase: issues.length ? 'validating' : 'editing', activeModule: 'rules', checkStatus: issues.length ? 'idle' : 'scheduled', analysis: null, validationIssues: issues, sampleEvaluation: evaluateSample(project, project.sampleInputs), selectedRuleId: project.rules[0]?.id, notice: `已复制版本到项目“${project.title}”` });
+    this.publish({ ...this.state, workspace: next, project, phase: issues.length ? 'validating' : 'editing', activeModule: 'rules', checkStatus: issues.length ? 'idle' : 'scheduled', analysis: null, validationIssues: issues, sampleEvaluation: evaluateSample(project, project.sampleInputs), selectedRuleId: project.rules[0]?.id, pendingRuleRevealId: undefined, notice: `已复制版本到项目“${project.title}”` });
     this.scheduleSave(next);
     if (!issues.length) this.scheduleCheck(80);
   }
@@ -221,7 +243,7 @@ export class RuleWorkspaceViewModel implements WorkspacePort {
       const workspace = saved ?? createDemoWorkspace();
       const project = workspace.projects.find((candidate) => candidate.id === workspace.activeProjectId) ?? workspace.projects[0];
       const issues = ruleDomain.validateProject(project);
-      this.publish({ ...this.state, workspace, project, phase: issues.length ? 'validating' : 'editing', persistence: saved ? 'saved' : 'saving', activeModule: 'inspection', checkStatus: issues.length ? 'idle' : 'scheduled', validationIssues: issues, analysis: null, sampleEvaluation: evaluateSample(project, project.sampleInputs), selectedRuleId: project.rules[0]?.id, notice: saved ? '已从本地恢复最近项目' : '已载入演示项目，可直接修改并检查规则' });
+      this.publish({ ...this.state, workspace, project, phase: issues.length ? 'validating' : 'editing', persistence: saved ? 'saved' : 'saving', activeModule: 'inspection', checkStatus: issues.length ? 'idle' : 'scheduled', validationIssues: issues, analysis: null, sampleEvaluation: evaluateSample(project, project.sampleInputs), selectedRuleId: project.rules[0]?.id, pendingRuleRevealId: undefined, notice: saved ? '已从本地恢复最近项目' : '已载入演示项目，可直接修改并检查规则' });
       if (saved) this.scheduleCheck(40);
       else {
         this.scheduleSave(workspace);
@@ -249,6 +271,7 @@ export class RuleWorkspaceViewModel implements WorkspacePort {
       analysis: recheck ? null : this.state.analysis,
       sampleEvaluation: evaluateSample(updated, updated.sampleInputs),
       selectedRuleId: updated.rules.some((rule) => rule.id === this.state.selectedRuleId) ? this.state.selectedRuleId : updated.rules[0]?.id,
+      pendingRuleRevealId: updated.rules.some((rule) => rule.id === this.state.pendingRuleRevealId) ? this.state.pendingRuleRevealId : undefined,
       notice,
     });
     this.scheduleSave(next);

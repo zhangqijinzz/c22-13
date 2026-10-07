@@ -1,3 +1,4 @@
+import { useLayoutEffect, useRef } from 'react';
 import type { BusinessRule, PredicateCondition, RuleField } from '../../models/ruleModel';
 import type { WorkspaceState } from '../../viewmodels/workspaceViewModel';
 import type { RulesViewModel } from './rulesViewModel';
@@ -7,8 +8,23 @@ interface RulesViewProps { state: WorkspaceState; viewModel: RulesViewModel }
 export function RulesView({ state, viewModel }: RulesViewProps) {
   const project = state.project;
   const rules = project?.rules ?? [];
+  const pageRef = useRef<HTMLElement>(null);
+  const revealId = state.pendingRuleRevealId;
+
+  // 模块切换与规则列表都提交到 DOM 之后，再定位、滚动并移动焦点；
+  // 目标规则若已在渲染前消失，回报失败由工作台给出说明而不是静默无反应。
+  useLayoutEffect(() => {
+    if (!revealId) return;
+    const card = pageRef.current?.querySelector<HTMLElement>(`[data-rule-id="${revealId}"]`);
+    if (card) {
+      card.scrollIntoView({ block: 'center' });
+      card.focus({ preventScroll: true });
+    }
+    viewModel.completeRuleReveal(revealId, Boolean(card));
+  }, [revealId, viewModel, rules.length]);
+
   return (
-    <section className="module-page">
+    <section className="module-page" ref={pageRef}>
       <div className="page-heading">
         <div><span className="eyebrow">模块 02 / 决策逻辑</span><h1>规则工作台</h1><p>用字段条件描述命中路径，并为每条规则分配优先级和结果。</p></div>
         <button className="button button-primary" onClick={() => viewModel.addRule()}><span>＋</span> 新建规则</button>
@@ -30,7 +46,7 @@ interface RuleCardProps { rule: BusinessRule; index: number; fields: RuleField[]
 function RuleCard({ rule, index, fields, selected, viewModel }: RuleCardProps) {
   const updateCondition = (conditionIndex: number, condition: PredicateCondition) => viewModel.updateCondition(rule.id, conditionIndex, condition);
   return (
-    <article data-rule-id={rule.id} className={`rule-card card-surface${selected ? ' rule-card-selected' : ''}`} onFocus={() => viewModel.selectRule(rule.id)}>
+    <article data-rule-id={rule.id} tabIndex={-1} aria-current={selected ? 'true' : undefined} className={`rule-card card-surface${selected ? ' rule-card-selected' : ''}`} onFocus={() => viewModel.selectRule(rule.id)}>
       <header className="rule-card-header">
         <div className="rule-order">R{String(index + 1).padStart(2, '0')}</div>
         <div className="rule-name-wrap"><input className="rule-name-input" aria-label={`规则${index + 1}名称`} value={rule.name} onChange={(event) => viewModel.updateRule(rule.id, { name: event.target.value })} /><span className="rule-meta">规则 ID · {rule.id.slice(-8)}</span></div>

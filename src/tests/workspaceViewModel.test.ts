@@ -101,4 +101,78 @@ describe('RuleWorkspaceViewModel', () => {
     expect(workspace.getSnapshot().project?.fields).toHaveLength(3);
     workspace.dispose();
   });
+
+  describe('rule reveal navigation', () => {
+    it('moves to the rules module and leaves the target pending for the rendered list to reveal', async () => {
+      const workspace = new RuleWorkspaceViewModel(new MemoryRepository(), new FakeChecker());
+      await workspace.start();
+      const targetId = (workspace.getSnapshot().project as RuleProject).rules[2].id;
+
+      workspace.revealRule(targetId);
+      const state = workspace.getSnapshot();
+      expect(state.activeModule).toBe('rules');
+      expect(state.selectedRuleId).toBe(targetId);
+      expect(state.pendingRuleRevealId).toBe(targetId);
+
+      workspace.completeRuleReveal(targetId, true);
+      expect(workspace.getSnapshot().pendingRuleRevealId).toBeUndefined();
+      workspace.dispose();
+    });
+
+    it('stays in the current module and explains when the target rule no longer exists', async () => {
+      const workspace = new RuleWorkspaceViewModel(new MemoryRepository(), new FakeChecker());
+      await workspace.start();
+      expect(workspace.getSnapshot().activeModule).toBe('inspection');
+
+      workspace.revealRule('rule-that-was-deleted');
+      const state = workspace.getSnapshot();
+      expect(state.activeModule).toBe('inspection');
+      expect(state.pendingRuleRevealId).toBeUndefined();
+      expect(state.notice).toContain('已不存在');
+      workspace.dispose();
+    });
+
+    it('surfaces an explanation when the rendered list cannot find the pending rule', async () => {
+      const workspace = new RuleWorkspaceViewModel(new MemoryRepository(), new FakeChecker());
+      await workspace.start();
+      const targetId = (workspace.getSnapshot().project as RuleProject).rules[0].id;
+
+      workspace.revealRule(targetId);
+      workspace.completeRuleReveal(targetId, false);
+      const state = workspace.getSnapshot();
+      expect(state.pendingRuleRevealId).toBeUndefined();
+      expect(state.notice).toContain('已不存在');
+      workspace.dispose();
+    });
+
+    it('clears the pending reveal when the target is deleted before the list finishes rendering', async () => {
+      const workspace = new RuleWorkspaceViewModel(new MemoryRepository(), new FakeChecker());
+      await workspace.start();
+      const project = workspace.getSnapshot().project as RuleProject;
+      const target = project.rules[1];
+
+      workspace.revealRule(target.id);
+      expect(workspace.getSnapshot().pendingRuleRevealId).toBe(target.id);
+      workspace.commitProject(
+        { ...project, rules: project.rules.filter((rule) => rule.id !== target.id) },
+        `已删除${target.name}`,
+        { recheck: false },
+      );
+      const state = workspace.getSnapshot();
+      expect(state.pendingRuleRevealId).toBeUndefined();
+      expect(state.selectedRuleId).not.toBe(target.id);
+      expect(state.project?.rules.some((rule) => rule.id === state.selectedRuleId)).toBe(true);
+      workspace.dispose();
+    });
+
+    it('ignores reveal completions for a request that is no longer pending', async () => {
+      const workspace = new RuleWorkspaceViewModel(new MemoryRepository(), new FakeChecker());
+      await workspace.start();
+      const targetId = (workspace.getSnapshot().project as RuleProject).rules[0].id;
+
+      workspace.completeRuleReveal(targetId, false);
+      expect(workspace.getSnapshot().notice).not.toContain('已不存在');
+      workspace.dispose();
+    });
+  });
 });
