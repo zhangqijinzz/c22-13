@@ -82,6 +82,29 @@ describe('RuleWorkspaceViewModel', () => {
     workspace.dispose();
   });
 
+  it('locates an existing rule and explains when the target is gone', async () => {
+    const workspace = new RuleWorkspaceViewModel(new MemoryRepository(), new FakeChecker());
+    await workspace.start();
+    const project = workspace.getSnapshot().project as RuleProject;
+    const target = project.rules[2];
+
+    workspace.openRule(target.id);
+    expect(workspace.getSnapshot().activeModule).toBe('rules');
+    expect(workspace.getSnapshot().selectedRuleId).toBe(target.id);
+    expect(workspace.getSnapshot().ruleFocusRequest).toEqual({ ruleId: target.id });
+
+    workspace.consumeRuleFocusRequest();
+    expect(workspace.getSnapshot().ruleFocusRequest).toBeUndefined();
+
+    workspace.navigate('inspection');
+    workspace.openRule('rule-no-longer-exists');
+    expect(workspace.getSnapshot().activeModule).toBe('inspection');
+    expect(workspace.getSnapshot().selectedRuleId).toBe(target.id);
+    expect(workspace.getSnapshot().ruleFocusRequest).toBeUndefined();
+    expect(workspace.getSnapshot().notice).toContain('未找到这条规则');
+    workspace.dispose();
+  });
+
   it('saves versions, freezes and resumes a version, and copies it into a new project', async () => {
     const workspace = new RuleWorkspaceViewModel(new MemoryRepository(), new FakeChecker());
     await workspace.start();

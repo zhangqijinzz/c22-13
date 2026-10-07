@@ -26,10 +26,18 @@ export default function App() {
     return () => workspace.dispose();
   }, [workspace]);
 
+  useEffect(() => {
+    const request = state.ruleFocusRequest;
+    if (!request || state.activeModule !== 'rules') return;
+    const card = document.querySelector<HTMLElement>(`[data-rule-id="${request.ruleId}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    card.focus({ preventScroll: true });
+    workspace.consumeRuleFocusRequest();
+  }, [state, workspace]);
+
   const openRule = (ruleId: string) => {
-    workspace.navigate('rules');
-    workspace.selectRule(ruleId);
-    document.querySelector(`[data-rule-id="${ruleId}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    workspace.openRule(ruleId);
   };
 
   return (

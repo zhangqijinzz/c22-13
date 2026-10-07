@@ -172,6 +172,8 @@ button:disabled { cursor: not-allowed !important; opacity: .5; }
 
 .rules-list { display: grid; gap: 11px; }
 .rule-card { overflow: hidden; box-shadow: 0 3px 14px rgba(35,67,58,.03); transition: border-color .15s ease, box-shadow .15s ease; }
+.rule-card:focus { outline: none; }
+.rule-card:focus-visible { outline: 2px solid #62a47d; outline-offset: 2px; }
 .rule-card-selected { border-color: #bedbca; box-shadow: 0 0 0 2px rgba(98,164,125,.08), var(--shadow); }
 .rule-card-header { display: flex; align-items: center; gap: 10px; padding: 11px 13px; border-bottom: 1px solid #eef2f0; background: #fcfdfc; }
 .rule-order { width: 31px; height: 26px; display: grid; place-items: center; border-radius: 6px; background: #eaf4ed; color: #3d8265; font: 9px 'DM Mono', monospace; }

@@ -27,6 +27,7 @@ export interface WorkspaceState {
   validationIssues: ReturnType<typeof ruleDomain.validateProject>;
   sampleEvaluation: SampleEvaluation | null;
   selectedRuleId?: string;
+  ruleFocusRequest?: { ruleId: string };
   notice: string;
   saveError?: string;
 }
@@ -104,6 +105,20 @@ export class RuleWorkspaceViewModel implements WorkspacePort {
 
   selectRule(ruleId?: string): void {
     this.updateView({ selectedRuleId: ruleId });
+  }
+
+  openRule(ruleId: string): void {
+    const project = this.state.project;
+    const rule = project?.rules.find((candidate) => candidate.id === ruleId);
+    if (!project || !rule) {
+      this.updateView({ notice: '未找到这条规则：它可能刚被删除。请重新运行检查以刷新检查结论。' });
+      return;
+    }
+    this.publish({ ...this.state, activeModule: 'rules', selectedRuleId: ruleId, ruleFocusRequest: { ruleId }, notice: '' });
+  }
+
+  consumeRuleFocusRequest(): void {
+    if (this.state.ruleFocusRequest) this.updateView({ ruleFocusRequest: undefined });
   }
 
   renameProject(title: string): void {

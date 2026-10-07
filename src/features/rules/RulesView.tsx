@@ -30,7 +30,7 @@ interface RuleCardProps { rule: BusinessRule; index: number; fields: RuleField[]
 function RuleCard({ rule, index, fields, selected, viewModel }: RuleCardProps) {
   const updateCondition = (conditionIndex: number, condition: PredicateCondition) => viewModel.updateCondition(rule.id, conditionIndex, condition);
   return (
-    <article data-rule-id={rule.id} className={`rule-card card-surface${selected ? ' rule-card-selected' : ''}`} onFocus={() => viewModel.selectRule(rule.id)}>
+    <article data-rule-id={rule.id} tabIndex={-1} className={`rule-card card-surface${selected ? ' rule-card-selected' : ''}`} onFocus={() => viewModel.selectRule(rule.id)}>
       <header className="rule-card-header">
         <div className="rule-order">R{String(index + 1).padStart(2, '0')}</div>
         <div className="rule-name-wrap"><input className="rule-name-input" aria-label={`规则${index + 1}名称`} value={rule.name} onChange={(event) => viewModel.updateRule(rule.id, { name: event.target.value })} /><span className="rule-meta">规则 ID · {rule.id.slice(-8)}</span></div>
